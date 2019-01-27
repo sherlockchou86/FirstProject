@@ -1,0 +1,57 @@
+################################################################################
+# Copyright (c) 2018, NVIDIA CORPORATION.  All rights reserved.
+#
+# NVIDIA Corporation and its licensors retain all intellectual property
+# and proprietary rights in and to this software, related documentation
+# and any modifications thereto.  Any use, reproduction, disclosure or
+# distribution of this software and related documentation without an express
+# license agreement from NVIDIA Corporation is strictly prohibited.
+#
+################################################################################
+
+This sample shows how to integrate a detector Model like SSD having layers
+supported through IPlugin interface by TensorRT and with custom output layer
+parsing for detected objects with DeepStreamSDK. The sample uses the
+IPluginCreator interface for configuring the plugins.
+
+--------------------------------------------------------------------------------
+Sample contents:
+- deepstream_app_config_ssd.txt - DeepStream reference app configuration file
+  for using SSD as the primary detector
+- config_infer_primary_ssd.txt - Configuration file for the GStreamer nvinfer
+  plugin for the SSD model
+- nvdsinfer_custom_impl_ssd/nvdsiplugin_ssd.cpp - IPluginV2+IPluginCreator
+  implementation for "FlattenConcat" layer in the SSD model. This implementation
+  has been referred to from the TensorRT sample sampleUffSSD.
+- nvdsinfer_custom_impl_ssd/nvdsparsebbox_ssd.cpp - Output layer parsing
+  function for detected objects for the SSD model.
+
+--------------------------------------------------------------------------------
+Pre-requisites:
+- Refer to TensorRT sampleUffSSD for generating the SSD UFF model.
+- Copy the UFF model file "sample_ssd_relu6.uff" and the model's label file
+  "ssd_coco_labels.txt" from the data/ssd directory in TensorRT samples to
+  this directory.
+
+--------------------------------------------------------------------------------
+Compile the custom library:
+  $ make -C nvdsinfer_custom_impl_ssd
+
+--------------------------------------------------------------------------------
+Run the sample:
+The "nvinfer" config file config_infer_primary_ssd.txt specifies the path to
+the custom library and the custom output parsing function through the properties
+"custom-lib-path" and "parse-bbox-func-name" respectively.
+
+- With gst-launch-1.0
+  $ gst-launch-1.0 filesrc location=../../samples/streams/sample_720p.mp4 ! \
+        decodebin ! nvinfer config-file-path= config_infer_primary_ssd.txt ! \
+        nvvidconv ! nvosd ! nveglglessink
+
+- With deepstream-app
+  $ deepstream-app -c deepstream_app_config_ssd.txt
+
+NOTE: To use INT8 mode, the INT8 calibration file for the SSD model needs to be
+provided along with changing the network-mode to 1 in config_infer_primary_ssd.txt.
+Refer to sampleUffSSD for running the sample in INT8 mode. The sample writes the
+calibration cache to file "CalibrationTableSSD".
